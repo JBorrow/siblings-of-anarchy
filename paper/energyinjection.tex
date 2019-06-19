@@ -1,0 +1,176 @@
+\section{Energy injection in Pressure-Entropy}
+\label{sec:energyinjection}
+
+\begin{figure}
+    \centering
+    \includegraphics{plots/energy_ratio_EAGLE.pdf}\vspace{-0.3cm}
+    \includegraphics{plots/energy_ratio.pdf}
+    \vspace{-0.7cm}
+    \caption{The result of sub-cycling after injecting energy
+    in the Pressure-Energy scheme. \emph{Top}: energy injection
+    method used in \eagle{}. \emph{Bottom}: best-case scenario
+    energy injection.}
+    \label{fig:energyinjection}
+\end{figure}
+
+For the original \eagle{}/\anarchy{} scheme, Pressure-Entropy was chosen as
+the base scheme. This was chosen for compatibility with the existing
+Gadget-based code, which tracked entropy as the thermodynamic variable.
+
+This scheme, in regular hydrodynamics tests, performs exactly the same as
+the Pressure-Energy scheme presented in this paper. However, when coupling to
+sub-grid physics, there are some key differences.
+
+At many points throughout the simulation, we wish to inject energy. For an
+entropy-based scheme, clearly some conversion must take place. Considering a
+Density-Entropy scheme to begin with \citep{Springel2002}, where we have only
+a smooth density $\rho$,
+\begin{align}
+    P = (\gamma - 1) u \rho,
+\end{align}
+with $P$ the pressure from the equation of state, $\gamma$ the ratio of specific
+heats, and $u$ the particle energy per unit mass. We also have an expression for
+the pressure as a function of the entropy $A$,
+\begin{align}
+    P = A \rho^\gamma.
+\end{align}
+Given that these should give the same thermodynamic pressure, we can eliminate that
+variable and write
+\begin{align}
+    u = \frac{A \rho^{\gamma - 1}}{\gamma - 1}
+\end{align}
+and as these variables are independent for a change in energy we can
+extract a change in entropy
+\begin{align}
+    \Delta A = (\gamma - 1)\frac{\Delta u}{\rho^{\gamma - 1}}
+\end{align}
+
+Clearly for any energy based scheme (either Density-Energy or
+Pressure-Energy), we can simply modify the internal energy per unit mass $u$
+of the particles to change the energy of the field. Then, the sum of all energies
+in the box will be the original value plus whatever we just chose to inject,
+without the requirement for an extra loop over neighbours\footnote{This is only
+true given that we do not change the values that enter the smooth quantities,
+here the density, at the same time as we inject energy. In practice, the mass
+of particles in cosmological simulations either does not change or changes
+very slowly with time (due to sub-grid stellar enrichment models).}.
+
+Now considering Pressure-Entropy, we must recall that the smoothed pressure
+\begin{align}
+    \bar{P}_i = \left[\sum_j m_j A_j^{1 / \gamma} W_{ij} \right]^\gamma.
+\end{align}
+Note how here the pressure of an individual particle depends on a smoothed
+entropy over its neighbours. We can play the game we did for the Density-Energy
+scheme again, with
+\begin{align}
+    \bar{P} = (\gamma - 1) u \bar{\rho} = A \bar{\rho}^\gamma
+\end{align}
+now being rearranged to eliminate the weighted density $\bar{\rho}$ such that
+\begin{align}
+    A(u) = \bar{P}^{1 - \gamma} ( \gamma - 1) u^\gamma,
+\end{align}
+\begin{align}
+    u(A) = \frac{A^{1/\gamma} \bar{P}^{1 - 1/\gamma}}{\gamma - 1},
+\end{align}
+for each particle.
+
+If we wish to inject energy into the \emph{field} by explicitly heating a single
+particle, we now need to be careful - notice how when we change the $A$ of one particle,
+the smooth pressure $\bar{P}$ of its \emph{neighbours} changes, and hence this
+change the internal energy $u$ that they report. When injecting energy, we need
+to ensure that we sum up all contributions to the energy of the field, including
+the energy that originates from the updated pressures of the neighbours of our
+particles.
+
+An ideal algorithm for injecting energy $\Delta u$ in this case would be as
+follows:
+\begin{enumerate}
+    \item Calculate the total energy of all particles that neighbour
+          the one which we wish to inject energy into,
+          $u_{{\rm field}, i} = \sum_j u(A_j, \bar{P}_j)$.
+    \item Find a target energy for the field, $u_{{\rm field}, t} = 
+          u_{{\rm field}, i} + \Delta u$
+    \item While the energy of the field $u_{{\rm field}} = \sum_j u(A_j, \bar{P}_j)$
+          is outside of the bounds of the target energy (tolerance in EAGLE
+          was $10^{-6}$) and the number of iterations is below 10,
+    \begin{enumerate}
+        \item Calculate $A_{\rm inject} = A(u_{{\rm field}, t} - u_{{\rm field}},
+              \bar{P})$ for the particle we want to inject into
+        \item Add on $A_{\rm inject}$ to the entropy of that particle
+        \item Re-calculate the smoothed pressures for all neighbouring particles
+        \item Re-calculate the energy of the field $u_{{\rm field}}$
+    \end{enumerate}
+\end{enumerate}
+There is an accompanying \python{} code available in the repository for
+this paper that implements this algorithm for a test problem\footnote{}.
+
+This algorithm turns out to be very computationally expensive. Re-calculating
+the smoothed pressure for every particle multiple times per step, in the
+original EAGLE, was determined to not be possible. An alternative form
+of the algorithm was presented that only updates the self contribution
+for the individual particles, that follows:
+\begin{enumerate}
+    \item Calculate the total energy of the particle that we
+          wish to inject energy into, $u_{i, {\rm initial}} = u(A_i, \bar{P}_i)$.
+    \item Find a target energy for the particle, $u_{i, {\rm target}} = 
+          u_{i, {\rm initial}} + \Delta u$
+    \item While the energy of the particle $u_i = u(A_i, \bar{P}_i)$
+          is outside of the bounds of the target energy (tolerance in EAGLE
+          was $10^{-6}$) and the number of iterations is below 10,
+    \begin{enumerate}
+        \item Calculate $A_{\rm inject} = A(u_{i, t} - u_i,
+              \bar{P})$ for the particle we want to inject into
+        \item Add on $A_{\rm inject}$ to the entropy of that particle
+        \item Update the self contribution to the smoothed pressure for 
+              the injection particle by
+              $\bar{P}_{i, {\rm new}} = \left[ \bar{P}_{i, {\rm old}}^{1/\gamma} +
+              (A_{\rm new}^{1 / \gamma} - A_{\rm old}^{1 / \gamma})W_0 \right]^\gamma$
+              with $W_0$ the kernel self-contribution term
+        \item Re-calculate the energy of the particle $u_i = u(A_i, \bar{P}_i)$
+              using the new entropy and energy of that particle.
+    \end{enumerate}
+\end{enumerate}
+In the EAGLE code, the weighted density was used, however here we have translated
+the code to act on smoothed pressures for simplicity. Code is also
+provided for the simple test case with this algorithm in the linked repository
+\footnote{\url{http://github.com/jborrow/siblings-of-anarchy}}.
+
+The implementations of both of these algorithms are tested in Figure
+\ref{fig:energyinjection}, with the ideal algorithm showing reasonable
+convergence within the maximal 10 steps that EAGLE requires. Larger relative
+errors are made for larger amounts of energy injection; note that a typical
+supernovae event in EAGLE heating a particle from $10^{4}$ to $10^{7.5}$ K
+(i.e. from the temperature of the warm ISM to the energy criterion set for
+feedback) corresponds to a factor of $10^{3.5}$ times the initial energy of
+the particle. The initial entropies of the particles were tested as being
+equal, or randomised; this did not affect the results.
+
+The algorithm used in EAGLE faces serious problems, leading to significantly
+higher than expected energy injection for low energy injection events. For
+the case of the requested energy injection being 10 times that of the initial
+particle energy, we see a factor of 7 extra energy injected into the field.
+As we go to higher levels of energy injection, this error is reduced. As we
+inject more entropy, the value $A^{1/\gamma} W_ij$ for all neighbouring
+kernels becomes dominant. Then, we calculate the pressure for the central
+particle more accurately (as the central contribution dominates) and we
+automatically calibrate correctly the fractions of energy from other
+particles.
+
+It is important to note, however, that for the case of \eagle{} supernovae,
+this should not represent too large of an issue (the energy converges within
+10 iterations to around a percent or so). However, these tests are highly
+idealised, and only inject energy into a single particle at a time. In a
+production run, there may be up to 30\% of the particles in a given kernel
+being heated; it is unclear what the effects of heating several particles at
+once are. This will be investigated in future work. Also, for feedback
+pathways that inject a relatively smaller amount of energy (for instance,
+SNIa, or AGN heating particles that have been recently heated and only
+allowed to cool a small amount) there will be a significantly larger amount
+of energy injected than initially expected.
+
+We are faced with a choice should we wish to use Pressure-Entropy: either we
+have to inject the incorrect amount of energy, or we must expend a huge
+amount of computational effort re-calculating smoothed pressures. For this reason,
+the Pressure-Entropy-based implementation of \anarchy{} (\anarchy{}-PA), was
+abandoned in \swift{} and for future \eagle{} projects, in favour of
+energy-based schemes.

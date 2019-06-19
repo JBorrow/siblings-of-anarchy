@@ -1,0 +1,74 @@
+\section{Kelvin-Helmholtz 2D}
+\label{sec:kelvinhelmholtz}
+
+\begin{figure*}
+    \centering
+    \includegraphics{plots/kelvin_helmholtz.pdf}
+    \vspace{-0.5cm}
+    \caption{Density map of the standard Kelvin-Helmholtz 2D test from the
+    \swift{} repository at $t=1.75$ s. See text for details.}
+    \label{fig:kelvinhelmholtz}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics{plots/kelvin_helmholtz_highres.pdf}
+    \vspace{-0.5cm}
+    \caption{Density projection of a significantly higher resolution (36x as
+    many particles) Kelvin-Helmholtz test with the \anarchy{}-DU scheme at
+    $t=1.6$ s. Notice how the individual eddies are beginning to break up.
+    The diffusion in the scheme prevents the kernel blob-sized artefacts that
+    we see even with the pressure based schemes. This particular simulation
+    includes some (accidentally) seeded sub-structure due to issues with the
+    initial conditions generation code; despite this the diffusion scheme
+    manages to keep the eddies stable until they go nonlinear.}
+    \label{fig:khhighres}
+\end{figure*}
+
+The two dimensional Kelvin-Helmholtz instability is presented below. This test
+is a notable variant on the usual Kelvin-Helmholtz test as it includes a
+density jump at constant pressure (i.e. yet another contact discontinuity).
+
+\subsection{Initial conditions}
+
+The initial conditions presented here are similar to those in \citet{Price2008}.
+This is set up in a periodic box of length $L=1$, with the central band between
+$0.25 < y < 0.75$ set to $\rho_C = 2$ and $v_{C, x} = 0.5$, with the outer
+region having $\rho_O = 1$ and $v_{O, x} = -0.5$ to set up a shear flow. The pressure
+$P_C = P_O = 2.5$ is enforced by setting the internal energies of the (equal mass,
+note this difference to the square test) particles. Particles are initially placed
+on a grid with equal separations.
+
+We then excite a specific mode of the instability, as in typical SPH simulations
+un-seeded instabilities are dominated by noise and are both unpredictable and
+unphysical, preventing comparison between schemes.
+
+\subsection{Results}
+
+Images of the Kelvin-Helmholtz test at $256^2$ resolution are presented in
+Figure \ref{fig:kelvinhelmholtz} for the four schemes just as the
+instability transitions out of the linear regime.
+
+The pressure blip present at contact discontinuities again causes significant
+issues for the Density-Energy scheme. The blip prevents any mixing between
+the two fluid phases and at later times even causes individual bound blobs to
+break off from the eddies.
+
+The Pressure-Energy scheme, as expected, stabilises the equations of motion
+over the discontinuity, but does not fully enable mixing of the phases due
+to some (small) residual surface tension (seen previously in \S \ref{sec:squaretest}).
+
+Adding diffusion into the mix with the \anarchy{}-DU scheme (note this uses the
+Density-Energy equation of motion) allows for the phases to slowly mix and
+provides by far the most satisfactory answer of all of the available schemes.
+A higher resolution version of the test is presented in Figure \ref{fig:khhighres}
+to fully demonstrate the ability of the \anarchy{}-DU scheme to effectively
+capture thermal instabilities across a contact discontinuity. Small instabilities
+form and begin to mix with the surrounding medium, showing large amounts of
+substructure completely unimpeded by the surface tension terms that usually plague
+density-based schemes.
+
+The diffusion in \anarchy{}-PU, that is required to prevent small blobs
+forming, does not fully manage to ensure the flow remains stable. Recall at
+this time the (seeded) instability should remain in the linear regime, and
+hence the very unstable edges to the flow are seeded by numerical noise.

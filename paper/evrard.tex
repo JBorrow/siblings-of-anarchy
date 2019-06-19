@@ -1,0 +1,100 @@
+
+\begin{figure*}
+    \centering
+    \includegraphics{plots/EvrardCollapsePressure.pdf}
+    \vspace{-0.7cm}
+    \caption{Pressure as a function of radius from the centre of
+    the sphere for the Evrard collapse, shown for our four schemes at time
+    $t=0.8$ s. As usual, the blue background shows all particles, with the
+    foreground black spots showing binned data with a $1\sigma$ scatter. In
+    this case, as there is no analytic solution available for the Evrard, we
+    show the solution with a high resolution 1D PPM code as the dashed purple
+    line.}
+    \label{fig:evrardpressure}
+\end{figure*}
+
+
+\section{Evrard Collapse}
+
+The Evrard collapse \citep{Evrard1988} test takes a large sphere of
+self-gravitating gas, at low energy and density, that collapses in on itself,
+causing an outward moving accretion shock. This test is of particular interest for
+cosmological and astrophysical applications as it allows for the inspection
+of the coupling between the gravity and hydrodynamics solver.
+
+\subsection{Initial Conditions}
+
+Gas particles are set up with an adiabatic index of $\gamma=5/3$, mass $M=1$,
+radius $R=1$, initial density profile $\rho(r) = 1 / 2\pi r$, and in a very
+cold state with $u = 0.05$, with the gravitational constant $G=1$. These
+initial conditions are created in a box of size 100, ensuring that there are
+no effects from the periodic boundary. Unfortunately, due to the non-uniform
+density profile, it is considerably more challenging to provide relaxed
+initial conditions (or use a glass file). Here, positions are simply drawn
+randomly to produce the required density profile, with the same set of
+initial conditions used for all schemes.
+
+\subsection{Results}
+
+In Figure \ref{fig:evrardpressure} we show the pressure distribution of the
+collapsing sphere at $t=0.8$ s for all schemes. We see that the pressure distribution
+is captured equally well by all schemes, with the shock resolved at a slightly
+smaller width for the density-based schemes (as shown in the previous sections).
+In particular, we note that the diffusion in the \anarchy{} schemes explicitly does
+\emph{not} cause excess diffusion of energy into, or out of, the centre of the
+collapsing sphere, with the pressure distribution for all schemes being very
+similar in this region.
+
+\begin{figure}
+    \centering
+    \includegraphics{plots/EvrardEnergy.pdf}
+    \vspace{-0.7cm}
+    \caption{Energy as a function of time for our various schemes (different
+    coloured lines) in the Evrard collapse, split by different components
+    (different line styles, see legend). The grey dashed line shows the
+    time at which the results are compared to the reference solution
+    in Figure \ref{fig:evrardpressure}. See Figure \ref{fig:evrardenergy}
+    for a breakdown of how the individual schemes compare to each other.
+    All schemes capture similar behaviour, with them all conserving energy
+    to within 0.003\%.}
+    \label{fig:evrardenergytotal}
+\end{figure}
+
+The Evrard collapse is of particular interest because it allows us to
+investigate the interplay between the energy captured by the hydrodynamics
+(broadly this corresponds to the kinetic energy $E_K$ and thermal energy
+$E_U$) and the energy captured by the gravitational dynamics (the potential
+energy, $E_P$). Comparisons between these different energies are shown in
+Figure \ref{fig:evrardenergytotal}, showing tight correspondance between all
+schemes. Note that all schemes conserve \emph{total} energy to within 0.003\%
+at all times.
+
+\begin{figure}
+    \centering
+    \includegraphics{plots/EvrardEnergyRatio.pdf}
+    \vspace{-0.4cm}
+    \caption{The (hydrodynamical) energy as a function of time in the Evrard
+    collapse problem. Due to an absence of an analytic solution, we show all
+    schemes with reference to \anarchy{}-DU, with the values representing the
+    percentage difference between that scheme and the reference. The grey
+    dashed line shows the time at which the results are compared with the
+    reference solution in Figure \ref{fig:evrardpressure}. Absolute values
+    of the energies are compared, to enable easier comparisons between the 
+    potential and thermal energies.}
+    \label{fig:evrardenergy}
+\end{figure}
+
+To investigate further the differences in energy make-up for the different
+schemes, we compare them directly to each other in Figure
+\ref{fig:evrardenergy}. We chose to compare against the \anarchy{}-DU model
+here as this allowed for the display of the maximal dynamic range in this
+figure. Here we see that the schemes that use the \anarchy{} model lead to
+lower thermal and kinetic energies, with there being more potential energy
+overall. The basic SPH schemes have significantly higher kinetic energies,
+particularly around the time when the shock reaches the centre of the sphere
+(around $t=1$ s). Importantly, even though we have included thermal
+diffusion, the differences between the total kinetic energy in all schemes is
+within the 2\% level, implying that the diffusion is not powering spurious
+transfer of energy. The overall energy conservation between the schemes, as noted
+above, is within the 0.003\% level and does not significantly vary
+between schemes.

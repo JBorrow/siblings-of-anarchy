@@ -1,0 +1,59 @@
+\section{Conceptual problems with time integration in smoothed pressure schemes}
+\label{sec:timeintegration}
+
+It is worth noting that all of the above schemes all perform well on
+hydrodynamics test suites (see below for more information). However,
+when entering the world of cosmological simulations, there are two main things
+that must be considered. The first is multiple time-stepping, without
+which we would not be able to perform these calculations \citep[see ][]{Borrow2018};
+the second is the injection and dissipation of energy from sub-grid
+terms. The latter involves two main components: cooling (dealt with here),
+and feedback (see \S \ref{sec:energyinjection}).
+
+When cooling on a particle-by-particle basis in a pressure-based scheme, it
+is impossible to keep the internal energy and pressure synchronised for
+particles that are being drifted. This is an issue in practice because when
+an active particle interacts with an inactive particle, the active particle
+uses both the internal energy and smooth pressure from the inactive particle
+(and from itself) in its equations of motion (see Equations \ref{eqn:pu_dvdt}
+and \ref{eqn:pu_dudt}). Importantly, these are non-symmetric errors, i.e. the
+error that is made in the velocity equation of motion is not mirrored exactly
+by the error made in the internal energy differential, possibly leading to
+energy conservation issues.
+
+To highlight the problem, consider two particles. One is currently active (
+particle $i$), and neighbours a particle that is currently inactive
+(particle $j$). To get the properties of particle $j$ at the current time $t$,
+it must be drifted forward to the current time from when it was last kicked.
+
+It does not seem to be possible to construct a time differential for the smoothed
+pressure, i.e. $\mathrm{d} \bar{P}_j / \mathrm{d} t$ is unknown. We do know
+how to drift a density, however, as this simply depends on the divergence of the
+velocity field \citep[see ][]{Price2012}, so if we construct a weighted density
+that should follow similar rules for drifting. The following algorithm is followed
+to drift the smoothed pressure:
+\begin{enumerate}
+    \item Calculate the weighted density of the particle
+          $\bar{\rho}(t - \Delta t) = \bar{P}(t - \Delta t) / u (t - \Delta t)$
+    \item Drift this quantity to construct $\bar{\rho}(t)$
+    \item Drift the internal energy using $\mathrm{d} u / \mathrm{d} t$ to
+          construct $u(t)$
+    \item Reconstruct the weighted pressure $\bar{P}(t) = \bar{\rho}(t) u(t)$.
+\end{enumerate}
+What we have really done here is assumed that the smoothed pressure can
+be drifted with a drift operator $D_{\bar{P}} = D_{\rho} / D_{u}$. This is
+problematic, as it assumes that the drift operator for $u$ is the same for
+all particles in a given kernel, which under cooling is clearly not true.
+
+The only way out of this is to re-compute the smoothed pressure for all particles
+that are interacted with every step, however this would be computationally
+infeasible.
+
+The product (at least this is the current conjecture) is that this problem is
+what gives rise to the streaks in the phase space diagrams that we have been
+seeing in the \swift{} \eagle{} implementation tests. The reason why these
+issues are smaller in an entropy based scheme (compared to an energy-based
+scheme) is that there is a significantly smaller dynamic range in the
+entropy, which is then compounded further by the exponent of $1/\gamma$ that
+the entropy enters the equation of motion with. Here, small errors in the
+energy lead to negligible errors in the entropy.

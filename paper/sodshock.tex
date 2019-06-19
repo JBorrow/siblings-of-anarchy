@@ -1,0 +1,57 @@
+\section{Sod shock tube}
+\label{sec:sodshock}
+
+\begin{figure*}
+    \centering
+    \includegraphics{plots/SodShock.pdf}
+    \vspace{-0.7cm}
+    \caption{Individual quantities plotted against the analytic solution
+    (purple dashed line) for the Sod shock tube. The horizontal axis
+    shows the $x$ position of the particles. All particles are shown in blue
+    with a sub-set shown in black. All panels are shown at the same
+    time $t=0.2$.}
+    \label{fig:sodshock}
+\end{figure*}
+
+The Sod shock tube is a classic Riemann problem often used to test
+hydrodynamics codes. The tube is made up of three main sections in the final
+solution: the rarefaction wave ($0.7 < x < 1.0$), contact discontinuity
+($x\approx1.2$), and a weak shock ($x\approx1.4$) at the time that we show it
+in Figure \ref{fig:sodshock}.
+
+\subsection{Initial Conditions}
+
+The initial conditions for the Sod shock tube use two BCC glass files, one
+with a step higher resolution (e.g. the $32^3$ is paired with the $64^3$).
+The gas is given an adiabatic index $\gamma = 5/3$, and the two glass files
+are set up next to each other to form a discontinuity, with the high
+resolution on the left and the low resolution on the right, with density
+$\rho_L = 1$, $\rho_R = 1/8$, velocity $v_L = v_R = 0$, and pressure $P_L =
+1$, $P_R = 0.1$.
+
+\subsection{Results}
+
+The schemes in general reduce to the analytic solution with very little scatter.
+The key exceptions are the Density-Energy scheme which shows the pressure blip
+at the contact discontinuity, leading to some scatter in the velocity profile around
+this point, and the extreme scatter in velocity shown in the \anarchy{}-DU scheme.
+This scatter appears to be a bug at the current time in the implementation as this
+is not present in other published results using similar schemes. However, it should
+be noted that the pressure blip is significantly suppressed here. We can see how this
+occurs by looking at the internal energy profile, where the energy has been smoothed
+over the discontinuity.
+
+The smoothing also occurs in the \anarchy{}-PU scheme which has a smaller amount of
+diffusion present. Both the pressure schemes, as expected, suppress the pressure
+blip.
+
+Another thing to note with the Sod shock is the performance of the various
+schemes around the rarefaction wave. The terms implemented in the \anarchy{}-DU
+scheme lead to second-order convergence with the smoothing length here,
+similar to schemes that include a Riemann solver like GIZMO
+\citep{Hopkins2015, Price2018}. However, the smooth pressure schemes both show a
+significant overestimation in the pressure at the turnover point. This is
+because of the way that \swift{} constrains the smoothing length; particles
+find a biased number of neighbours in the pre-expansion region and hence they
+contribute more to the kernel than expected. This then leads to an
+overestimation of the pressure in this region.

@@ -1,0 +1,46 @@
+\section{Hydrostatic Halo}
+
+\begin{figure*}
+    \centering
+    \includegraphics{plots/hydrostatic_halo.pdf}
+    \vspace{-0.7cm}
+    \caption{The particle distributions after 10 dynamical times
+    of the hydrostatic halo for various thermodynamic quantities, for the
+    two \anarchy{} schemes. Note that \anarchy{}-PU has significantly less
+    diffusion than the \anarchy{}-DU scheme. The blue background scatter
+    shows all particles, with the black dots and their bars representing
+    binned quantities and a $1\sigma$ scatter. The purple dashed line shows
+    the expected solution, with the smaller panels showing the residual.}
+    \label{fig:hydrostatichalo}
+\end{figure*}
+
+In this section we consider the effect of the diffusion in a situation where
+it appears that we very much want none; a hydrostatic halo that must stay in
+equilibrium. This halo has a pressure gradient that is generated from the
+gravitational potential.
+
+\subsection{Initial conditions}
+
+The test uses the initial conditions from the \swift{} repository, which
+distribute gas particles randomly using rejection sampling in a cube with a
+side length of $4$ Mpc. The halo has a virial radius of $0.5$ Mpc. The
+density profile of the gas is proportional to $r^{-2}$ where $r$ is the
+distance from the centre of the cube. The solution is then plotted after ten
+dynamical times.
+
+\subsection{Results}
+
+This test shows how the diffusion scheme is able to minimise differences between
+the internal energies of neighbouring particles, in an effort to ensure that scatter
+is reduced within a single kernel. This is the same property that enables
+the schemes with diffusion to overcome the small blobs that can form in 
+the Kelvin-Helmholtz test (\S \ref{sec:kelvinhelmholtz}). Over the run-time of the
+simulation, this then becomes a global property, significantly reducing the scatter
+of internal energy as a function of radius. The pressure profile is constrained by
+the gravitational potential and enforced as we explicitly conserve energy with
+the diffusion scheme; the equations ensure that all energy that is removed from 
+a particle is given back to another particle in a pairwise manner.
+
+Similar results to the \anarchy{}-PU scheme are seen using the base Pressure-Energy
+scheme without diffusion; here the limited $\beta_D = 0.01$ is not enough to equalise
+the internal energy across the kernel and reduce the scatter. 

@@ -1,0 +1,296 @@
+\section{Schemes}
+
+This paper compares several schemes: Density-Energy SPH (DU), Pressure-Energy
+SPH (PU), Pressure-Energy SPH with modern switches for both artificial
+conduction and viscosity (\anarchy{}-PU), and Density-Energy SPH with modern
+switches for artificial conduction and viscosity (\anarchy{}-DU). We pair these
+with the quintic spline kernel, as described in \citet{Dehnen2012}, to avoid
+the E0 errors that are present in the Wendland kernels. Throughout the paper
+we take a ratio of smoothing length to mean inter-particle separation
+$\eta=1.238$ to give 48 neighbours with the cubic spline for compatibility
+with the well known Gadget-2 cosmological simulation code, for which this
+parameter and kernel are the default.
+
+In the below, cosmological scale-factors are omitted for clarity. All calculations
+in the hydrodynamics solver, apart from the integration of the viscosity and
+diffusion coefficients, are performed in comoving space.
+
+\subsection{Basic SPH schemes}
+
+\subsubsection{Choice of artificial viscosity}
+
+For the two schemes described in this sub-section, DU and PU, we use the
+same, fixed, artificial viscosity prescription as described in \citet{Monaghan1992},
+along with a Balsara switch \citet{Balsara1989}.
+
+This uses a viscous equation of motion for all particles,
+\begin{equation}
+    \frac{\mathrm{d}\mathbf{v}_i}{\mathrm{d}t} = 
+    - \sum_j \frac{1}{2} \nu_{ij} \left(
+        \nabla W(r_{ij}, h_i) + \nabla W(r_{ji}, h_j)
+    \right),
+    \label{eqn:du_dvdt}
+\end{equation}
+which is a sum over neighbouring particles $j$, with $h$ the smoothing
+length, $m$ the particle mass, $r_{ij}$ the separation between the particles,
+and $W$ the SPH kernel. The dimensionless viscosity parameter $\alpha=0.8$.
+The viscosity coefficient is defined as follows for each pair of particles
+\begin{equation}
+    \nu_{ij} = - \frac{1}{2}
+        \frac{\alpha (B_i + B_j) \mu_{ij} v_{{\rm sig}, ij}}{\rho_i + \rho_j}.
+\end{equation}
+The signal velocity for each particle is given by the maximum of $v_{{\rm
+sig}, ij} = c_i + c_j - 3\mu_{ij}$\footnote{This represents the usual choice
+of $\alpha=1$ and $\beta/\alpha=3$. Note that, unlike \citet{Price2018}, here
+we do not explicitly include the $\alpha$ from variable artificial
+viscosities in the signal velocity.} over its neighbours with
+\begin{equation}
+    \mu_{ij} = \begin{cases}
+        \frac{\mathbf{v}_{ij} \cdot \mathbf{x}_{ij}}{|\mathbf{x}_{ij}|} & \mathbf{v}_{ij} \cdot \mathbf{x}_{ij} < 0,\\
+        0                                                                 & {\rm otherwise}.
+    \end{cases}
+\end{equation}
+Here, $\mathbf{x}_{ij} = \mathbf{x}_i - \mathbf{x}_j$ and $\mathbf{v}_{ij} =
+\mathbf{v}_i - \mathbf{v}_j$. The Balsara switch \citet{Balsara1989} is
+implemented as follows,
+\begin{equation}
+    B_i = \frac{|\nabla \cdot \mathbf{v}_i|}{
+        |\nabla \cdot \mathbf{v}_i| + |\nabla \times \mathbf{v}_i| + 10^{-4} c_i / h_i
+    }
+\end{equation}
+with the spatial derivatives calculated in the usual way \citep{Price2012}.
+
+Along with this equation of motion, there is an associated equation of motion
+for the particle-carried internal energy $u$ (or entropy $A$, with the latter
+omitted for brevity),
+\begin{equation}
+    \frac{\mathrm{d}u_i}{\mathrm{d}t} = 
+        \sum_j m_j \frac{1}{2}\nu_{ij} \mathbf{v}_{ij} \cdot
+        \overline{\nabla W_{ij}}
+\end{equation}
+with $\overline{\nabla W_{ij}} = \frac{1}{2}(\nabla W(r_{ij}, h_i) + \nabla W(r_{ji}, h_j))$.
+
+\subsubsection{Density-Energy SPH (DU)}
+
+This implementation of SPH uses the smooth density for each particle $i$,
+\begin{equation}
+    \rho_i = \sum_j m_j W(r_{ij}, h_i).
+\end{equation}
+This density is then used with an equation of state, $P_i = (\gamma - 1) u_i \rho_i$,
+along with a particle-carried internal energy per unit mass $u_i$, to produce the
+following SPH equation of motion:
+\begin{align}
+    \frac{\mathrm{d}\mathbf{v}_i}{\mathrm{d}t} = 
+    - \sum_j m_j &\left[
+        f_i \frac{P_i}{\rho_i^2} \nabla W(r_{ij}, h_i) +
+        f_j \frac{P_j}{\rho_j^2} \nabla W(r_{ji}, h_j)
+   \right],
+\end{align}
+with the $f$ factors
+\begin{equation}
+    f_i = \left(1 + \frac{h_i}{n_d \rho_i} \frac{\partial \rho_i}{\partial h_i}\right)^{-1},
+\end{equation}
+with $n_d$ the number of spatial dimensions, which is introduced to account
+for the variable smoothing lengths required for adaptive astrophysical
+problems. The derivatives here are calculated in the same way as \citet{Price2012}.
+
+As this scheme tracks energy as the thermal variable, we also have an associated
+equation of motion for the internal energy,
+\begin{equation}
+    \frac{\mathrm{d}u_i}{\mathrm{d}t} = \sum_j m_j f_i \frac{P_i}{\rho_i^2}
+    \mathbf{v}_{ij} \cdot \nabla W(r_{ji}, h_j).
+\end{equation}
+
+\subsubsection{Pressure-Energy SPH (PU)}
+
+Pressure-Energy SPH differs from the above Density-Energy SPH in that it
+relies on an additional smoothed quantity, the smooth pressure
+\citep{Hopkins2013},
+\begin{equation}
+    \bar{P}_i = \sum_j (\gamma - 1) u_j m_j W(r_{ij}, h_i),
+    \label{eqn:smoothpressure}
+\end{equation}
+that enters the equation of motion
+\begin{align}
+    \frac{\mathrm{d} \mathbf{v}_i}{\mathrm{d} t} = -\sum_j (\gamma - 1)^2 m_j
+    u_j u_i 
+    \left[ \frac{f_{ij}}{\bar{P}_i} \nabla W(r_{ji}, h_j) +
+    \frac{f_{ji}}{\bar{P}_j} \nabla W(r_{ji}, h_j)   \right].
+    \label{eqn:pu_dvdt}
+\end{align}
+Note that we can always construct a smoothed pressure, $\bar{P}$, in any
+case. The difference here is that it enters the equation of motion instead of
+the un-smoothed pressure $P = (\gamma - 1) u \rho$.
+
+The factors entering the equation of motion due to the variable smoothing
+lengths in this case are more complex, with
+\begin{equation}
+    f_{ij} = 1 - \left[\frac{h_i}{n_d (\gamma - 1) \bar{n}_i m_j u_j}
+             \frac{\partial \bar{P}_i}{\partial h_i} \right]
+             \left( 1 + \frac{h_i}{n_d \bar{n}_i}
+             \frac{\partial \bar{n}_i}{\partial h_i} \right)^{-1}.
+\end{equation}
+where $\bar{n}$ is the local number density of particles. These factors
+also enter the equation of motion for $u$,
+\begin{equation}
+    \frac{\mathrm{d} u}{\mathrm{d} t} = (\gamma - 1)^2 \sum_j m_j
+    u_i u_j \frac{f_ij}{\bar{P}_i} \mathbf{v}_{ij} \cdot \nabla W_{ij}.
+    \label{eqn:pu_dudt}
+\end{equation}
+
+The sound-speed in Pressure-Energy requires some consideration. To see what
+the `correct' sound-speed is, consider the equation of motion (Eq.
+\ref{eqn:pu_dvdt}) in contrast to the EoM for Density-Energy SPH (Eq.
+\ref{eqn:du_dvdt}). For Density-Energy SPH,
+\begin{equation}
+  \frac{\mathrm{d}\mathbf{v}_i}{\mathrm{d} t} \sim \frac{c_{s, i}^2}{\rho_i}
+\nabla_i W_{ij},
+  \nonumber
+\end{equation}
+and for Pressure-Energy SPH,
+\begin{equation}
+  \frac{\mathrm{d}\mathbf{v}_i}{\mathrm{d} t} \sim (\gamma - 1)^2
+  \frac{u_i u_j}{\bar{P}_i} \nabla_i W_{ij}.
+  \nonumber
+\end{equation}
+From this it is reasonable to assume that the sound-speed, i.e. the speed at
+which information propagates in the system through pressure waves, is given by
+the expression
+\begin{equation}
+  c_{s, i} = (\gamma - 1) u_i \sqrt{\gamma \frac{\rho_i}{\bar{P_i}}}.
+  \label{eq:sph:pu:soundspeedfromeom}
+\end{equation}
+This expression is dimensionally consistent with a sound-speed, and includes
+the variable used to evolve the system, the smoothed pressure $\bar{P}$.
+However, such a sound-speed leads to a considerably \emph{higher} time-step
+in front of a shock wave (where the smoothed pressure is higher, but the SPH
+density is relatively constant), leading to integration problems. An
+alternative to this is to use the smoothed pressure in the place of the
+``real" pressure. Whilst it is well understood that $\bar{P}$ should not be
+used to replace the real pressure in general, here (in the sound-speed) it is
+only used as part of the time-stepping condition. Using the `smoothed' sound-speed
+\begin{equation}
+  \overline{c_{s, i}} = \sqrt{\gamma \frac{\bar{P}_i}{\rho_i}}
+  \label{eq:sph:pu:soundspeed}
+\end{equation}
+instead of Eq. \ref{eq:sph:pu:soundspeedfromeom} leads to a much improved
+time-stepping condition that actually allows particles to be woken up before
+being hit by a shock.
+
+\subsubsection{Pressure-Entropy (PA) SPH}
+
+Pressure-Entropy SPH uses a similar set of equations of motion to the
+Pressure-Energy case, but instead of tracking the internal energy per unit
+mass $u$ as the thermodynamical variable, it instead tracks entropy $A$.
+In this scheme we take the smoothed pressure
+\begin{align}
+    \bar{P}_i = \left[ 
+        \sum_j A^{1 / \gamma} m_j W(r_{ij}, h_j)
+    \right]^\gamma
+\end{align}
+which is then evolved in a similar way to the above. This scheme is not
+actually fully implemented in \swift{} due to the conceptual issues presented
+in \S \ref{sec:energyinjection}. In this case, there is no equation of motion
+for $A$ (aside from the diffusive artificial viscosity term), as this is
+explicitly conserved under adiabatic expansion and contraction.
+
+\subsection{\anarchy{}-PU SPH}
+
+The \anarchy{} scheme, known for its use in the EAGLE simulations
+\citep{Schaye2015, Crain2015, Schaller2015}, builds on top of the
+Pressure-Entropy SPH discussed above. It also includes a simplified version
+of the artificial viscosity scheme from \citet{Cullen2010}, and an artificial
+energy diffusion term \citep{Price2008}. The scheme implemented in \swift{}
+differs from the one used in the original EAGLE simulations, using the
+internal energy as the thermodynamic variable as opposed to the particle
+entropy.
+
+The artificial viscosity scheme is similar to the above, but now the
+coefficient $\alpha$ varies with time. The aim here is to have the artificial
+viscosity peak at a shock front, and then decay afterwards to reduce spurious
+dissipation in non-shocking regions. To that end, we use a pre-shock
+indicator
+\begin{equation}
+    S_i = - h_i^2 \min(\dot{\nabla} \cdot \mathbf{v}_i, 0)
+\end{equation}
+for each particle. This, the time differential of the velocity divergence,
+is calculated implicitly from the value at the previous step, i.e.
+\begin{equation}
+    \dot{\nabla} \cdot \mathbf{v}_i(t) = \frac{
+        \nabla \cdot \mathbf{v}_i(t) - \nabla \cdot \mathbf{v}_i(t - \Delta t)
+    }{\Delta t}.
+\end{equation}
+The velocity divergence is again calculated in the regular SPH way, with no
+'special' or 'improved' estimate used. Specifically, we do not use the matrix
+calculations presented in \citet{Cullen2010}. The viscosity for each particle
+$\alpha_i$ is set using the following logic:
+\begin{equation}
+    \alpha_i \rightarrow \begin{cases}
+       \alpha_{{\rm loc}, i} & {\rm if}~ \alpha_i < \alpha_{{\rm loc}, i}, \\
+       \alpha_{{\rm loc}, i} + (\alpha_i - \alpha_{{\rm loc}, i})e^{-\mathrm{d}t/\tau_i} & {\rm if}~ \alpha_i > \alpha_{{\rm loc}, i},\\
+       \alpha_{{\rm min}} & {\rm if}~ \alpha_i < \alpha_{\rm min},
+    \end{cases}
+\end{equation}
+with
+\begin{equation}
+    \alpha_{{\rm loc}, i} = \alpha_{\rm max} S / (S + v_{{\rm sig}_i}^2)
+\end{equation}
+and 
+\begin{equation}
+    \tau_i = \ell c_{s, i}/{H_i}$, where $\alpha_{\rm max} = 2.0,
+\end{equation}
+$\alpha_{\rm min} = 0.0$, $\ell = 0.25$, are dimensionless parameters, and $H_i$
+the kernel support radius. Alongside this, we again use the Balsara switch to
+reduce dissipation in shear flows; here we take \blue{Josh: check this is implemeted
+correctly!}
+\begin{equation}
+    \nu_{ij} = - \frac{1}{2}
+        \frac{(\alpha_i B_i + \alpha_j B_j) \mu_{ij} v_{{\rm sig}, ij}}{\rho_i + \rho_j},
+\end{equation}
+and otherwise use the same viscous equations of motion as previously.
+
+The final ingredient, which was added to ensure that clusters have flat entropy 
+profiles in adiabatic cosmological simulations \citep{Sembolini2016}, and to ensure
+that Kelvin-Helmholtz instabilities have a smooth profile, is thermal diffusion. This
+thermal diffusion has a switch that aims to ensure that it is only activated in cases
+of extreme energy gradients, with
+\begin{equation}
+    \frac{
+        \mathrm{d} \alpha_{D, i}
+    }{
+        \mathrm{d} t
+    } = \beta_D H_i \frac{\nabla^2 u_i}{\sqrt{u_i}} + 
+        \frac{\alpha_{D, i} - \alpha_{D, {\rm min}}}{\tau_{D, i}},
+\end{equation}
+with $\alpha_{D, {\rm min}} = 0$, $\beta_D = 0.01$, and $\tau_{D, i} = c_{s,
+i}/{H_i}$ included to allow for decay away from discontinuities. This is then
+bounded by $\alpha_{D, max} = 1$, however typical values are of order 0.01,
+which is much lower than the typical value in other codes; for instance in
+the \phantomsph{} model this $\alpha_D = 1.0$ throughout the simulation
+\citep{Price2018}. The actual diffusion is then applied to the particles with
+the following equation of motion:
+\begin{align}
+    \frac{
+        \mathrm{d}u_i
+    }{
+        \mathrm{d}t
+    } = 
+    \sum_j m_j \frac{\alpha_{D, i} + \alpha_{D, j}}{\rho_i + \rho_j} v_{D, ij} (u_i - u_j) \overline{\nabla W_{ij}}
+    \label{eqn:energydiff}
+\end{align}
+with the diffusion velocity $v_{D, ij} = \max(c_i + c_j + \mu_{ij}, 0)$.
+\blue{T\&N comparison TBD}.
+
+\subsection{\anarchy{}-DU}
+
+The \anarchy{}-DU model is the same as the \anarchy{}-PU model, simply swapping out the
+Pressure-Energy equations of motion for Density-Energy. This is a step back towards
+simplicity (it completely resolves the above discussion about the sound-speed and
+signal velocity, for example), as there is no longer a `weighted' quantity entering the
+equations of motion.
+
+The major difference in this scheme is that we require different default parameters
+for the diffusion scheme. The viscosity scheme is left completely un-touched, but we change
+$\beta_D = 0.25$ from the old default of $0.01$ to enable the diffusion to ramp
+up significantly faster, and hence reach higher values. This allows $\alpha_D$ to reach
+up to the maximum $\alpha_{D, {\rm max}} = 1$ in the following tests.

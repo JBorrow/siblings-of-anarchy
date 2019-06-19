@@ -1,0 +1,95 @@
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\textwidth]{plots/SquareTest.pdf}
+    \caption{Maps of various quantities in the 2D square test at $t=4$;
+    beyond this all schemes are stable. The white dashed line shows the
+    initial boundary of the square; this should be a stable configuration. Of
+    particular note is the rightmost panel which shows the pressure across
+    the medium; blips here will result in artificial surface tension, causing
+    the square to slowly morph into a circle. Each plot has an individual
+    normalisation for the colour map, as otherwise no structure can be seen
+    for any scheme apart from Density-Energy in the pressure panel. The
+    structure seen in \anarchy{}-PU scheme is a set of spurious pressure
+    waves present since the initial conditions that constantly propagate
+    through the medium.}
+    \label{fig:squaretest}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics{plots/SquareTestConvergence.pdf}
+    \vspace{-1.0cm}
+    \caption{Convergence with resolution for the density in the square test
+    (Figure \ref{fig:squaretest}) for the \anarchy{}-DU scheme. Here we see
+    that the smooth region created by the diffusion converges towards an
+    infinitely small width as a function of resolution, and at high
+    resolution this scheme is able to completely capture the expected
+    behaviour in this test.}
+    \label{fig:squareconvergence}
+\end{figure*}
+
+\section{Square Test}
+\label{sec:squaretest}
+
+
+The square test, first presented in \citet{Hopkins2013}, is a particularly
+challenging test for schemes that do not use a smoothed pressure in their
+equation of motion, as they typically lead to an artificial surface
+tension at contact discontinuities (the same ones that lead to the pressure
+blip in \S \ref{sec:sodshock}). As the diffusion solved a lot of the problems
+at that blip, we can assume that it will go some way to remedying the issue
+here. This test is actually a more challenging variant of the ellipsoid test
+presented in \citet{Hess2010}, as this includes sharp corners which are
+more challenging for diffusion schemes to capture. 
+
+\subsection{Initial conditions}
+
+The initial conditions are generated using non-equal mass particles to ensure
+that the kernel evaluations are as symmetric as possible. We set up a grid in
+2D space with $n\times n$ particles (in our fiducial run, $n=128$), in a box
+of size $L=1$. The central $0.5 \times 0.5$ square is set to have a density
+of $\rho_C = 4.0$, with the outer region being set to $\rho_O = 1.0$. The
+pressures are set to be equal with $P_C = P_O = 1.0$, with this enforced by
+setting the internal energies of the particles to their appropriate values.
+All particles are set to be completely stationary in the initial conditions
+with $\mathbf{v} = 0$.
+
+\subsection{Results}
+
+
+Figure \ref{fig:squaretest} shows the results of this test for our various
+schemes at $128^2$ resolution. First, we can see that the basic
+Density-Energy scheme represents the failure state for this test. It becomes
+very round, which is a hallmark of a scheme that includes a surface tension
+term; this is shown even more in the pressure plot where the blip from the
+Sod shock test has now manifested in a ring of pressure around the high
+density region.
+
+The \anarchy{}-DU scheme, with increased diffusion, manages to somewhat rescue
+the solution, with only the corners of the square being rounded off before
+the diffusion can smooth over the contact discontinuity. This highlights a
+problem with initial conditions for the square test with schemes that include
+diffusion; to have a stable solution the system first needs to get into a
+state where the contact discontinuity has been smoothed over. In realistic
+situations, such a discontinuity would always have time to be smoothed as it
+formed (e.g. as a cold clump formed from a cooling instability, or as one
+blob of gas approaches another). We can see the residual of these initial conditions
+issues in the pressure distribution; the initial pressure blip causes sound waves
+to continuously propagate through the system and slowly disrupt the square
+due to the periodic boundary conditions. The square is also non-viscous, 
+so these waves are never damped.
+
+Finally, here we see that even within a pressure-based scheme, there is still
+a residual `pressure blip' at the contact discontinuity. The pressure panels
+for both of the Pressure-Energy schemes show this, with the residual blip in
+the base scheme being significantly stronger than the one present in 
+\anarchy{}-DU. The small amount of diffusion in \anarchy{}-PU manages to
+somewhat remedy this but has not been able to completely erase it by $t=4$.
+
+In Figure \ref{fig:squareconvergence} we show the convergence with resolution
+for the square test in the \anarchy{}-DU scheme. All of the other schemes
+do not converge as-such; the Pressure-Energy schemes pass this test at all
+resolutions, and the Density-Energy scheme (without diffusion) produces a
+circular shape at all resolutions. The \anarchy{}-DU scheme manages to converge
+well with resolution, even filling out the corners of the square (and significantly
+reducing the size of the transition region) at resolutions of $256^2$ and above.
