@@ -28,6 +28,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
+from matplotlib.colors import Normalize
 
 from swiftsimio import load
 from swiftsimio.visualisation import project_gas_pixel_grid
@@ -45,7 +46,7 @@ sims = [load(f"{s}/square_{snap:04d}.hdf5") for s in simulations.keys()]
 resolution = 512
 
 # First create a grid that gets the particle density so we can divide it out later
-density = [project_gas_pixel_grid(sim, 512, "density") / project_gas_pixel_grid(sim, 512, None) for sim in sims]
+density = [project_gas_pixel_grid(sim, 512, "densities") / project_gas_pixel_grid(sim, 512, None) for sim in sims]
 
 # Set up plotting stuff
 try:
@@ -66,10 +67,11 @@ ax = ax.flatten()
 
 for axis, image, resolution in zip(ax, density, simulations.values()):
     axis.imshow(
-        image,
+        1.0 - Normalize(vmin=1.5, vmax=3.5)(image),
         origin="lower",
         extent=[0, 1, 0, 1],
-        cmap="magma",
+        cmap="RdBu",
+        vmin=0, vmax=1.0
     )
 
     # Exact solution, a square!

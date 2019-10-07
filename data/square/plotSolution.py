@@ -28,9 +28,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
+from matplotlib.colors import Normalize
 
 from swiftsimio import load
 from swiftsimio.visualisation import project_gas_pixel_grid
+
+import cmocean.cm as cm
 
 snap = 40
 
@@ -70,7 +73,7 @@ plot = dict(
     pressure="Pressure ($P$)",
 )
 
-minmax = dict(internal_energy=[None, None], density=[None, None], pressure=[2.2, 2.6])
+minmax = dict(internal_energy=[1.5, 3.5], density=[3.5, 1.5], pressure=[2.5 + 0.2, 2.5 - 0.2])
 
 for sim, unweighted_grid, axis_row, name in zip(
     sims, unweighted_grids, ax, simulations.values()
@@ -81,20 +84,31 @@ for sim, unweighted_grid, axis_row, name in zip(
 
     for key, label in plot.items():
         axis = axis_row[current_axis]
-        vminvmax = minmax[key]
+        vmin, vmax = minmax[key]
 
-        grid = (
-            project_gas_pixel_grid(sim, resolution=resolution, project=key)
-            / unweighted_grid
-        )
+        try:
+            grid = (
+                project_gas_pixel_grid(sim, resolution=resolution, project=key)
+                / unweighted_grid
+            )
+        except:
+            grid = (
+                project_gas_pixel_grid(sim, resolution=resolution, project=key.replace("y", "ies").replace("ure", "ures"))
+                / unweighted_grid
+            )
+
+        if vmin > vmax:
+            normed_grid = 1.0 - Normalize(vmin=vmax, vmax=vmin)(grid)
+        else:
+            normed_grid = Normalize(vmin=vmin, vmax=vmax)(grid)
 
         axis.imshow(
-            grid,
+            normed_grid,
             origin="lower",
             extent=[0, 1, 0, 1],
-            cmap="magma",
-            vmin=vminvmax[0],
-            vmax=vminvmax[1],
+            cmap="RdBu",
+            vmin=0.0,
+            vmax=1.0,
         )
 
         # Exact solution, a square!

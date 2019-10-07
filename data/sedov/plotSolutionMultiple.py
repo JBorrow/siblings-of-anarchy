@@ -39,7 +39,7 @@ snap = 5
 simulations = {
     "minimal": "Density-Energy",
     "anarchy-du": "ANARCHY-DU",
-    "anarchy-pu": "ANARCHY-PU",
+    "anarchy-du-switch": "ANARCHY-DU (Switch)",
     "pressure-energy": "Pressure-Energy",
     "anarchy-du-nodiff": "ANARCHY-DU (No diffusion)",
     "anarchy-pu-nodiff": "ANARCHY-PU (No diffusion)",

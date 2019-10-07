@@ -19,7 +19,7 @@ plt.style.use("mnras_durham")
 gamma = 5.0 / 3.0
 hubble_constant = 67.777 * (km / s) / Mpc
 
-schemes = {"anarchy-du": "ANARCHY-DU", "anarchy-pu": "ANARCHY-PU"}
+schemes = {"anarchy-du-limit": "ANARCHY-DU", "anarchy-pu": "ANARCHY-PU"}
 
 plot = {
     "internal_energy": "Internal Energy ($u$)",
@@ -28,16 +28,22 @@ plot = {
 }
 
 ylim = {
-    "internal_energy": [28000, 35000],
-    "density": [1e-4, 1e-1],
-    "pressure": [(gamma - 1) * 28000 * 1e-4, (gamma - 1) * 35000 * 1e-1],
+    "internal_energy": [28000, 32000],
+    "density": [5e-4, 1e-1],
+    "pressure": [(gamma - 1) * 28000 * 5e-4, (gamma - 1) * 32000 * 1e-1],
+}
+
+residual_ylim = {
+    "internal_energy": 0.03,
+    "density": 0.3,
+    "pressure": 0.3
 }
 
 ylog = {"internal_energy": False, "density": True, "pressure": True}
 
 snapshot_name = "Hydrostatic_0300.hdf5"
 
-radial_range = (50, 1500)
+radial_range = (50, 750)
 radial_bins = np.linspace(*radial_range, 25)
 radial_bin_centers = [0.5 * (x + y) for x, y in zip(radial_bins[:-1], radial_bins[1:])]
 
@@ -53,7 +59,10 @@ def get_r(data):
 
 def plot_internal_energy(data, axis, axis_residual):
     r = get_r(data)
-    u = data.gas.internal_energy
+    try:
+        u = data.gas.internal_energy
+    except AttributeError:
+        u = data.gas.internal_energies
 
     binned = (
         stats.binned_statistic(r, u, statistic="mean", bins=radial_bins)[0] * u.units
@@ -115,7 +124,10 @@ def plot_internal_energy(data, axis, axis_residual):
 
 def plot_density(data, axis, axis_residual):
     r = get_r(data)
-    rho = data.gas.density
+    try:
+        rho = data.gas.density
+    except AttributeError:
+        rho = data.gas.densities
 
     binned = (
         stats.binned_statistic(r, rho, statistic="mean", bins=radial_bins)[0]
@@ -189,7 +201,14 @@ def plot_density(data, axis, axis_residual):
 
 def plot_pressure(data, axis, axis_residual):
     r = get_r(data)
-    pressure = data.gas.pressure
+    try:
+        pressure = data.gas.pressure
+        rho = data.gas.density
+        internal_energy = data.gas.internal_energy
+    except AttributeError:
+        pressure = data.gas.pressures
+        rho = data.gas.densities
+        internal_energy = data.gas.internal_energies
 
     binned = (
         stats.binned_statistic(r, pressure, statistic="mean", bins=radial_bins)[0]
@@ -231,12 +250,11 @@ def plot_pressure(data, axis, axis_residual):
     )
 
     ideal_solution_u = (circular_velocity ** 2 / (2.0 * (gamma - 1.0))).to(
-        data.gas.internal_energy.units
+        internal_energy.units
     )
 
     # Now let's do rho; for this we need the binned rho from above...
-
-    rho = data.gas.density
+    
 
     binned_rho = (
         stats.binned_statistic(r, rho, statistic="mean", bins=radial_bins)[0]
@@ -320,6 +338,7 @@ if __name__ == "__main__":
             analysis_function(data, axis, residual_axis)
 
             axis.set_ylim(*vertical_plot_limit)
+            residual_axis.set_ylim(-residual_ylim[part_property], residual_ylim[part_property])
 
             if log_vertical_axis:
                 axis.semilogy()

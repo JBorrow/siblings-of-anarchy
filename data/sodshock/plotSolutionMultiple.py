@@ -38,7 +38,7 @@ snap = 1
 
 simulations = {
     "minimal": "Density-Energy",
-    "anarchy-du-old": "ANARCHY-DU",
+    "anarchy-du-switch": "ANARCHY-DU",
     "pressure-energy": "Pressure-Energy",
     "anarchy-pu": "ANARCHY-PU",
 }
@@ -46,14 +46,20 @@ simulations = {
 sims = [load(f"{s}/sodshock_{snap:04d}.hdf5") for s in simulations.keys()]
 resolution = 512
 
+def try_read(sim, x):
+    try:
+        return getattr(sim.gas, x).value
+    except:
+        return getattr(sim.gas, x.replace("y", "ies").replace("ure", "ures"))
+
 data = [
     dict(
         x=sim.gas.coordinates.value[:, 0],
         v=sim.gas.velocities.value[:, 0],
-        u=sim.gas.internal_energy.value,
-        S=sim.gas.entropy.value,
-        P=sim.gas.pressure.value,
-        rho=sim.gas.density.value,
+        u=try_read(sim, "internal_energy"),
+        S=try_read(sim, "entropy"),
+        P=try_read(sim, "pressure"),
+        rho=try_read(sim, "density"),
         y=sim.gas.coordinates.value[:, 1],
         z=sim.gas.coordinates.value[:, 2],
     )
