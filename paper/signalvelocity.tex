@@ -1,0 +1,39 @@
+\subsection{Conduction velocity}
+
+There is some freedom in the choice of the conduction velocity
+in Equation \ref{eqn:diffusion}. This choice, in a cosmological simulation,
+should be able to do the following things:
+\begin{itemize}
+    \item Allow the diffusion to stabilise contact discontinuities
+    \item Reduce diffusion away from contact discontinuities wherever
+          possible
+    \item Respect a pressure gradient that holds up hydrostatic equilibrium
+\end{itemize}
+The latter two points are also handled by the evolution of the diffusion
+parameter $\alpha_D$ (Equation \ref{eqn:alpha_D}), in that we only attempt
+to activate the diffusion when there is a non-linear gradient in the internal
+energy.
+
+There have been a number of signal velocities proposed, with the initial
+one coming from the signal velocity for the rest of the hydrodynamics,
+governed by the soundspeed,
+\begin{equation}
+    v_{D, ij} = c_i + c_j - \mu_{ij},
+    \label{eqn:vdiffsoundspeed}
+\end{equation}
+which would ensure that the speed of diffusion grows as the gas gets hotter.
+The second possibility, discussed by \citep{Wetzley2007}, was chosen to
+ensure that hydrostatic equilibrium is respected, is
+\begin{equation}
+    v_{D, ij} = \left| \frac{\mathbf{v}_{ij} \cdot \mathbf{x}_ij}{r_ij} \right|,
+    \label{eqn:vdiffvij}
+\end{equation}
+This ensures that if there is no net movement of particles locally (i.e. an un-divergent
+velocity field) that there will be no diffusion.
+Finally, we have the choice proposed by \citep{Price2008}, where
+\begin{equation}
+    v_{D, ij} = \sqrt{\frac{|P_i - P_j|}{\frac{1}{2}(\rho_i + \rho_j)}}
+    \label{eqn:vdiffP}
+\end{equation}
+that ensures that the diffusion is only ever activated where there is a difference in
+pressure across neighbouring particles.
