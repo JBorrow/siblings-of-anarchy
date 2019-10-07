@@ -203,7 +203,8 @@ of the artificial viscosity scheme from \citet{Cullen2010}, and an artificial
 energy diffusion term \citep{Price2008}. The scheme implemented in \swift{}
 differs from the one used in the original EAGLE simulations, using the
 internal energy as the thermodynamic variable as opposed to the particle
-entropy.
+entropy (see \S \ref{sec:energyinjection} for the reasoning behind this; in
+all other aspects this implementation is identical).
 
 The artificial viscosity scheme is similar to the above, but now the
 coefficient $\alpha$ varies with time. The aim here is to have the artificial
@@ -289,8 +290,47 @@ simplicity (it completely resolves the above discussion about the sound-speed an
 signal velocity, for example), as there is no longer a `weighted' quantity entering the
 equations of motion.
 
-The major difference in this scheme is that we require different default parameters
-for the diffusion scheme. The viscosity scheme is left completely un-touched, but we change
-$\beta_D = 0.25$ from the old default of $0.01$ to enable the diffusion to ramp
-up significantly faster, and hence reach higher values. This allows $\alpha_D$ to reach
-up to the maximum $\alpha_{D, {\rm max}} = 1$ in the following tests.
+The major difference in this scheme is that we require different default
+parameters for the diffusion scheme. The viscosity scheme is left completely
+un-touched, but we change $\beta_D = 0.25$ from the old default of $0.01$ to
+enable the diffusion to ramp up significantly faster, and hence reach higher
+values. This allows $\alpha_D$ to reach up to the maximum $\alpha_{D, {\rm
+max}} = 1$ in the following tests. This is required to ensure that contact
+discontinuities do not result in the usual surface tension term \citep[see ][
+for more details on this issue with Density-Energy SPH]{Price2008}. We also
+change the diffusion velocity from the one present in the original \eagle{}
+\anarchy{} model to one more consistent with the fundamental concept behind
+artificial diffusion, i.e. to remove contact discontinuities. Our diffusion
+velocity is hence
+\begin{equation}
+    v_{D, ij} = \frac{1}{2}\left[
+        \sqrt{\frac{|P_i - P_j|}{\frac{1}{2}\left(\rho_i + \rho_j\right)}} + 
+        \frac{|\mathbf{v}_{ij} \cdot \mathbf{r}_{ij}|}{r_{ij}}
+    \right],
+    \label{eqn:vdiffanarchydu}
+\end{equation}
+i.e. the sum of equations 41 and 42 in \citep{Price2018}. This choice enables
+us to diffuse energy efficiently over stationary contact discontinuities (the
+first term) and in shearing flows (second term), and allows us to solve all
+problems with the same diffusion velocity, without the need to switch when
+changing to self-gravitating runs.
+
+This diffusion can cause leakage of energy out of supernovae in sub-grid
+models that use thermal feedback, such as the EAGLE model. To prevent this,
+we introduce a \emph{diffusion limiter} to prevent diffusion in highly
+viscous fluids. For a discussion on how this was calibrated and why it is
+required, see \S \ref{sec:diffusionlimiter}. The limiter works by requiring
+that
+\begin{equation}
+    \alpha_{D, i} = \min\left[
+        \alpha_{D, i}, ~ \alpha_{D, {\rm max}}
+            \left\{
+                1 - \left(\frac{\alpha_{V, {\rm ngb}, i}}{\alpha_{V, {\rm{max}}}}\right)^{1/\kappa}
+            \right\}
+        \right]
+    \label{eqn:diffusionlimiter}
+\end{equation}
+during every step, where $\alpha_{V, {\rm ngb}, i}$ is the maximal
+\emph{viscosity} coefficient over the neighbours of particle $i$. $\kappa$
+controls the `aggressiveness' of this limiter, with the default value $\kappa
+= 1.0$.
